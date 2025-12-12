@@ -65,7 +65,7 @@ abstract class Layer implements Arrayable, Jsonable
     /**
      * Configura o conteúdo do tooltip.
      */
-    public function tooltipContent(string $content): static
+    public function tooltipContent(?string $content): static
     {
         $this->tooltipData['content'] = $content;
         return $this;
@@ -135,7 +135,7 @@ abstract class Layer implements Arrayable, Jsonable
     /**
      * Configura o título do popup.
      */
-    public function popupTitle(string $title): static
+    public function popupTitle(?string $title): static
     {
         $this->popupData['title'] = $title;
         return $this;
@@ -144,7 +144,7 @@ abstract class Layer implements Arrayable, Jsonable
     /**
      * Configura o conteúdo do popup.
      */
-    public function popupContent(string $content): static
+    public function popupContent(?string $content): static
     {
         $this->popupData['content'] = $content;
         return $this;
@@ -155,10 +155,16 @@ abstract class Layer implements Arrayable, Jsonable
      */
     public function popupFields(array $fields): static
     {
+        $fields = collect($fields)
+            ->mapWithKeys(fn($value, $key) => [
+                __(str($key)->title()->replace('_', ' ')->toString() )=> __($value)
+            ])->toArray();
+
         $this->popupData['fields'] = array_merge(
             $this->popupData['fields'] ?? [],
             $fields
         );
+
         return $this;
     }
 
@@ -200,7 +206,7 @@ abstract class Layer implements Arrayable, Jsonable
     /**
      * Método de conveniência para definir popupTitle e tooltipContent
      */
-    public function title(string $title)
+    public function title(?string $title)
     {
         return $this
             ->tooltipContent($title)
@@ -291,12 +297,12 @@ abstract class Layer implements Arrayable, Jsonable
             'onMouseOut' => $this->onMouseOutScript,
         ];
 
-        if ($this->tooltipData) {
-            $data['tooltip'] = $this->tooltipData;
+        if (array_filter($this->tooltipData)) {
+            $data['tooltip'] = array_filter($this->tooltipData);
         }
 
-        if ($this->popupData) {
-            $data['popup'] = $this->popupData;
+        if (array_filter($this->popupData)) {
+            $data['popup'] = array_filter($this->popupData);
         }
 
         return $data;

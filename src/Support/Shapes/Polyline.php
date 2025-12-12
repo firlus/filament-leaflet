@@ -2,21 +2,35 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
-
-class Polyline extends Layer
+class Polyline extends Shape
 {
-    protected array $points; // [[lat, lng], [lat, lng], ...]
-    protected array $options = [];
+    protected array $latlngs = [];
 
-    final public function __construct(array $points)
+    final public function __construct(array $latlngs = [])
     {
-        $this->points = $points;
+        parent::__construct();
+        $this->latlngs = $latlngs;
+        
+        $this->option('fill', false);
     }
 
-    public static function make(array $points): static
+    public static function make(array $latlngs = []): static
     {
-        return new static($points);
+        return new static($latlngs);
+    }
+
+    public function addPoint(float $latitude, float $longitude): static
+    {
+        $this->latlngs[] = [$latitude, $longitude];
+        return $this;
+    }
+
+    /**
+     * Define a suavização da linha (smoothFactor).
+     */
+    public function smoothFactor(float $factor): static
+    {
+        return $this->option('smoothFactor', $factor);
     }
 
     public function getType(): string
@@ -27,59 +41,14 @@ class Polyline extends Layer
     protected function getLayerData(): array
     {
         return [
-            'points' => $this->points,
-            'options' => $this->options,
+            'latlngs' => $this->latlngs,
+            'options' => $this->getShapeOptions(),
         ];
     }
 
     public function isValid(): bool
     {
-        return count($this->points) >= 2;
-    }
-
-    public function options(array $options): static
-    {
-        $this->options = array_merge($this->options, $options);
-        return $this;
-    }
-
-    public function color(string $color): static
-    {
-        $this->options['color'] = $color;
-        return $this;
-    }
-
-    public function weight(int $weight): static
-    {
-        $this->options['weight'] = $weight;
-        return $this;
-    }
-
-    public function opacity(float $opacity): static
-    {
-        $this->options['opacity'] = $opacity;
-        return $this;
-    }
-
-    public function dashArray(string $pattern): static
-    {
-        $this->options['dashArray'] = $pattern;
-        return $this;
-    }
-
-    /**
-     * Linha tracejada
-     */
-    public function dashed(): static
-    {
-        return $this->dashArray('5, 10');
-    }
-
-    /**
-     * Linha pontilhada
-     */
-    public function dotted(): static
-    {
-        return $this->dashArray('1, 5');
+        // Uma linha precisa de pelo menos 2 pontos
+        return count($this->latlngs) >= 2;
     }
 }

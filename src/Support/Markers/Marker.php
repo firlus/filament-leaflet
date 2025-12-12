@@ -2,20 +2,31 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
 
+use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
+use EduardoRibeiroDev\FilamentLeaflet\Traits\HasColor;
+use Exception;
+use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
+use ReflectionFunction;
 
 class Marker extends Layer
 {
+    use HasColor;
+    
     protected float $latitude;
     protected float $longitude;
-    protected string $color = 'blue';
     protected bool $isDraggable = false;
 
     // Configurações de Ícone
     protected ?string $iconUrl = null;
     protected array $iconSize = [25, 41];
+
+    // Record Binding
+    protected ?Model $record = null;
+    protected ?Closure $mapRecordCallback = null;
+
 
     final public function __construct(float $latitude, float $longitude)
     {
@@ -26,6 +37,51 @@ class Marker extends Layer
     public static function make(float $latitude, float $longitude): static
     {
         return new static($latitude, $longitude);
+    }
+
+    public static function fromRecord(
+        Model $record,
+        string $latColumn = 'latitude',
+        string $lngColumn = 'longitude',
+        ?string $jsonColumn = null,
+        ?string $titleColumn = 'title',
+        ?string $descriptionColumn = 'description',
+        ?array $popupFieldsColumns = null,
+        null|string|Color $color = null,
+        ?string $iconUrl = null,
+        ?Closure $mapRecordCallback = null
+    ): static {
+        $lat = 0;
+        $lng = 0;
+
+        if ($jsonColumn) {
+            $coords = $record->{$jsonColumn};
+            $coords = is_string($coords) ? json_decode($coords, true) : $coords;
+
+            $lat = $coords[$latColumn] ?? 0;
+            $lng = $coords[$lngColumn] ?? 0;
+        } else {
+            $lat = $record->{$latColumn} ?? 0;
+            $lng = $record->{$lngColumn} ?? 0;
+        }
+
+        return (new static($lat, $lng))
+            ->record($record)
+            ->title($record->{$titleColumn} ?? null)
+            ->popupContent($record->{$descriptionColumn} ?? null)
+            ->popupFields(is_array($popupFieldsColumns) ? $record->only($popupFieldsColumns) : $record->except([
+                'id',
+                $latColumn,
+                $lngColumn,
+                $jsonColumn,
+                $titleColumn,
+                $descriptionColumn,
+                'created_at',
+                'updated_at',
+            ]))
+            ->color($color)
+            ->icon($iconUrl)
+            ->mapRecordUsing($mapRecordCallback);
     }
 
     /*
@@ -48,6 +104,7 @@ class Marker extends Layer
             'icon' => $this->iconUrl,
             'iconSize' => $this->iconSize,
             'draggable' => $this->isDraggable,
+            'record' => $this->record,
         ];
     }
 
@@ -63,19 +120,7 @@ class Marker extends Layer
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Define a cor do marcador. Aceita string ou Enum.
-     */
-    public function color(string|Color $color): static
-    {
-        $this->color = $color instanceof Color
-            ? $color->value
-            : Color::from($color)->value;
-
-        return $this;
-    }
-
-    public function icon(string $url, array $size = [25, 41]): static
+    public function icon(?string $url, array $size = [25, 41]): static
     {
         $this->iconUrl = $url;
         $this->iconSize = $size;
@@ -90,53 +135,60 @@ class Marker extends Layer
 
     /*
     |--------------------------------------------------------------------------
-    | Color Shortcuts
+    | Record Binding
     |--------------------------------------------------------------------------
     */
 
-    public function blue(): static
+    public function record(Model $record, ?Closure $mapRecordCallback = null): static
     {
-        return $this->color(Color::Blue);
+        $this->record = $record;
+
+        return $this
+            ->id($record->getKey())
+            ->mapRecordUsing($mapRecordCallback);
     }
 
-    public function red(): static
+    public function getRecord(): ?Model
     {
-        return $this->color(Color::Red);
+        return $this->record;
     }
 
-    public function green(): static
+    public function mapRecordUsing(?Closure $callback): static
     {
-        return $this->color(Color::Green);
+        $this->mapRecordCallback = $callback;
+
+        if ($this->record && is_callable($this->mapRecordCallback)) {
+            $this->resolveCallback(
+                $this->mapRecordCallback,
+                ['marker' => $this, 'record' => $this->record]
+            );
+        }
+
+        return $this;
     }
 
-    public function orange(): static
+    private function resolveCallback(?callable $callback, array $context = []): mixed
     {
-        return $this->color(Color::Orange);
-    }
+        $reflection = new ReflectionFunction($callback);
+        $arguments = [];
 
-    public function yellow(): static
-    {
-        return $this->color(Color::Yellow);
-    }
+        foreach ($reflection->getParameters() as $parameter) {
+            $name = $parameter->getName();
 
-    public function violet(): static
-    {
-        return $this->color(Color::Violet);
-    }
+            if (array_key_exists($name, $context)) {
+                $arguments[] = $context[$name];
+                continue;
+            }
 
-    public function grey(): static
-    {
-        return $this->color(Color::Grey);
-    }
+            if ($parameter->isDefaultValueAvailable()) {
+                $arguments[] = $parameter->getDefaultValue();
+                continue;
+            }
 
-    public function black(): static
-    {
-        return $this->color(Color::Black);
-    }
+            throw new Exception("Unable to resolve dependency: \${$name}");
+        }
 
-    public function gold(): static
-    {
-        return $this->color(Color::Gold);
+        return $callback(...$arguments);
     }
 
     /*

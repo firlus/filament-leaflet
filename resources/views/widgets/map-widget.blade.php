@@ -238,6 +238,9 @@
                             case 'circle':
                                 layer = this.createCircle(layerData);
                                 break;
+                            case 'circleMarker':
+                                layer = this.createCircleMarker(layerData);
+                                break;
                             case 'rectangle':
                                 layer = this.createRectangle(layerData);
                                 break;
@@ -335,6 +338,14 @@
                 createCircle(data) {
                     if (!data.center || !data.radius) return null;
                     return L.circle(data.center, data.radius, data.options || {});
+                },
+
+                /**
+                 * Cria um marcador circular
+                 */
+                createCircleMarker(data) {
+                    if (!data.center || !data.radius) return null;
+                    return L.circleMarker(data.center, data.radius, data.options || {});
                 },
 
                 /**

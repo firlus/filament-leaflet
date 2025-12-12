@@ -2,21 +2,31 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
-
-class Polygon extends Layer
+class Polygon extends Shape
 {
-    protected array $points; // [[lat, lng], [lat, lng], ...]
-    protected array $options = [];
+    protected array $latlngs = [];
 
-    final public function __construct(array $points)
+    /**
+     * @param array $latlngs Array de coordenadas ex: [[-15.0, -50.0], [-15.1, -50.1], ...]
+     */
+    final public function __construct(array $latlngs = [])
     {
-        $this->points = $points;
+        parent::__construct();
+        $this->latlngs = $latlngs;
     }
 
-    public static function make(array $points): static
+    public static function make(array $latlngs = []): static
     {
-        return new static($points);
+        return new static($latlngs);
+    }
+
+    /**
+     * Adiciona um ponto (vértice) ao polígono.
+     */
+    public function addPoint(float $latitude, float $longitude): static
+    {
+        $this->latlngs[] = [$latitude, $longitude];
+        return $this;
     }
 
     public function getType(): string
@@ -27,60 +37,14 @@ class Polygon extends Layer
     protected function getLayerData(): array
     {
         return [
-            'points' => $this->points,
-            'options' => $this->options,
+            'latlngs' => $this->latlngs,
+            'options' => $this->getShapeOptions(),
         ];
     }
 
     public function isValid(): bool
     {
-        return count($this->points) >= 3;
-    }
-
-    public function options(array $options): static
-    {
-        $this->options = array_merge($this->options, $options);
-        return $this;
-    }
-
-    public function color(string $color): static
-    {
-        $this->options['color'] = $color;
-        return $this;
-    }
-
-    public function fillColor(string $color): static
-    {
-        $this->options['fillColor'] = $color;
-        return $this;
-    }
-
-    public function weight(int $weight): static
-    {
-        $this->options['weight'] = $weight;
-        return $this;
-    }
-
-    /**
-     * Cria um triângulo
-     */
-    public static function triangle(array $point1, array $point2, array $point3): static
-    {
-        return new static([$point1, $point2, $point3]);
-    }
-
-    /**
-     * Cria um hexágono regular a partir de um centro e raio
-     */
-    public static function hexagon(array $center, float $radius): static
-    {
-        $points = [];
-        for ($i = 0; $i < 6; $i++) {
-            $angle = deg2rad(60 * $i);
-            $lat = $center[0] + ($radius * cos($angle));
-            $lng = $center[1] + ($radius * sin($angle));
-            $points[] = [$lat, $lng];
-        }
-        return new static($points);
+        // Um polígono precisa de pelo menos 3 pontos para fechar uma área
+        return count($this->latlngs) >= 3;
     }
 }

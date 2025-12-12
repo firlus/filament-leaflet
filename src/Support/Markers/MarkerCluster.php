@@ -2,36 +2,84 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
 
+use Closure;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
+use EduardoRibeiroDev\FilamentLeaflet\Traits\HasColor;
+use EduardoRibeiroDev\FilamentLeaflet\Traits\HasOptions;
+use Illuminate\Database\Eloquent\Model;
 
 class MarkerCluster extends Layer
 {
+    use HasColor;
+    use HasOptions;
+
     /** @var Marker|array[] */
     protected array $markers = [];
     protected ?string $group = null;
 
-    /**
-     * Opções de configuração para o L.markerClusterGroup
-     * Veja: https://github.com/Leaflet/Leaflet.markercluster
-     */
-    protected array $options = [
-        'showCoverageOnHover' => true,
-        'zoomToBoundsOnClick' => true,
-        'spiderfyOnMaxZoom' => true,
-        'removeOutsideVisibleBounds' => true,
-    ];
+    // Model Binding Configuration
+    protected ?string $model = null;
+    protected ?Closure $modifyQueryCallback = null;
+    protected ?Closure $mapRecordCallback = null;
 
-    final public function __construct(array $markers = [])
+    // Mapeamento de colunas
+    protected ?string $latColumn = null;
+    protected ?string $lngColumn = null;
+    protected ?string $jsonColumn = null;
+    protected ?string $titleColumn = null;
+    protected ?string $descriptionColumn = null;
+    protected ?array $popupFieldsColumns = null;
+    protected ?string $iconUrl = null;
+
+    final public function __construct(array $markers)
     {
         $this->markers($markers);
     }
 
-    /**
-     * Método estático de criação
-     */
-    public static function make(array $markers = []): static
+    public static function make(array $markers): static
     {
         return new static($markers);
+    }
+
+    /**
+     * Configura o cluster para carregar marcadores a partir de um Model.
+     */
+    public static function fromModel(
+        string $model,
+        string $latColumn = 'latitude',
+        string $lngColumn = 'longitude',
+        ?string $jsonColumn = null,
+        ?string $titleColumn = null,
+        ?string $descriptionColumn = null,
+        ?array $popupFieldsColumns = null,
+        null|string|Color $color = null,
+        ?string $iconUrl = null,
+        ?Closure $mapRecordCallback = null,
+        ?Closure $modifyQueryCallback = null
+    ): static {
+        $instance = new static([]);
+
+        $instance->model = $model;
+        $instance->latColumn = $latColumn;
+        $instance->lngColumn = $lngColumn;
+        $instance->jsonColumn = $jsonColumn;
+        $instance->titleColumn = $titleColumn;
+        $instance->descriptionColumn = $descriptionColumn;
+        $instance->popupFieldsColumns = $popupFieldsColumns;
+        $instance->color($color);
+        $instance->iconUrl = $iconUrl;
+
+        // Callbacks
+        if ($mapRecordCallback) {
+            $instance->mapRecordUsing($mapRecordCallback);
+        }
+
+        if ($modifyQueryCallback) {
+            $instance->modifyQueryUsing($modifyQueryCallback);
+        }
+
+        return $instance;
     }
 
     /*
@@ -48,14 +96,8 @@ class MarkerCluster extends Layer
     protected function getLayerData(): array
     {
         return [
-            'config' => $this->options,
-            'markers' => collect($this->markers)->map(function ($marker) {
-                if ($marker instanceof Marker) {
-                    return $marker->toArray();
-                };
-
-                return $marker;
-            })->toArray(),
+            'config' => $this->getOptions(),
+            'markers' => collect($this->getMarkers())->toArray(),
         ];
     }
 
@@ -64,126 +106,137 @@ class MarkerCluster extends Layer
         return true;
     }
 
-    /**
-     * Adiciona um único marcador ao cluster.
-     */
     public function marker(Marker|array $marker): static
     {
         $this->markers[] = $marker;
-
         return $this;
     }
 
-    /**
-     * Adiciona múltiplos marcadores ao cluster.
-     * @param Marker|array[] $markers
-     */
     public function markers(array $markers): static
     {
         foreach ($markers as $marker) {
             $this->marker($marker);
         }
-
         return $this;
     }
 
-    /**
-     * Remove todos os marcadores atuais.
-     */
     public function clearMarkers(): static
     {
         $this->markers = [];
-
         return $this;
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Configurações do Cluster (Leaflet.markercluster options)
+    | Lógica de Resolução dos Marcadores
     |--------------------------------------------------------------------------
     */
 
     /**
-     * O raio máximo (em pixels) que um cluster cobrirá.
+     * Retorna a combinação dos marcadores manuais e dos marcadores vindos do Model.
      */
-    public function maxClusterRadius(int $radius): static
+    public function getMarkers(): array
     {
-        $this->options['maxClusterRadius'] = $radius;
+        $allMarkers = $this->markers;
 
-        return $this;
-    }
-
-    /**
-     * Se true, mostra os limites do polígono do cluster ao passar o mouse.
-     */
-    public function showCoverageOnHover(bool $show = true): static
-    {
-        $this->options['showCoverageOnHover'] = $show;
-
-        return $this;
-    }
-
-    /**
-     * Se true, ao clicar no cluster, o mapa fará zoom até os limites.
-     */
-    public function zoomToBoundsOnClick(bool $zoom = true): static
-    {
-        $this->options['zoomToBoundsOnClick'] = $zoom;
-
-        return $this;
-    }
-
-    /**
-     * Se true, ao atingir o zoom máximo, os marcadores se espalharão (spiderfy).
-     */
-    public function spiderfyOnMaxZoom(bool $spiderfy = true): static
-    {
-        $this->options['spiderfyOnMaxZoom'] = $spiderfy;
-
-        return $this;
-    }
-
-    /**
-     * Se true, remove clusters/marcadores que estão fora da view atual para performance.
-     */
-    public function removeOutsideVisibleBounds(bool $remove = true): static
-    {
-        $this->options['removeOutsideVisibleBounds'] = $remove;
-
-        return $this;
-    }
-
-    /**
-     * Define o nível de zoom onde o cluster é desativado (todos os marcadores aparecem).
-     */
-    public function disableClusteringAtZoom(int $zoomLevel): static
-    {
-        $this->options['disableClusteringAtZoom'] = $zoomLevel;
-
-        return $this;
-    }
-
-    /**
-     * Permite definir qualquer opção arbitrária do plugin JS.
-     */
-    public function option(string $key, mixed $value): static
-    {
-        $this->options[$key] = $value;
-
-        return $this;
-    }
-
-    /**
-     * Substitui ou mescla todas as opções.
-     */
-    public function options(array $options, bool $merge = true): static
-    {
-        if ($merge) {
-            $this->options = array_merge($this->options, $options);
-        } else {
-            $this->options = $options;
+        if ($this->model) {
+            $modelMarkers = $this->resolveModelMarkers();
+            $allMarkers = array_merge($allMarkers, $modelMarkers);
         }
 
+        return $allMarkers;
+    }
+
+    /**
+     * Executa a query e transforma os registros em Markers.
+     */
+    protected function resolveModelMarkers(): array
+    {
+        $query = $this->model::query();
+
+        if (is_callable($this->modifyQueryCallback)) {
+            $query = call_user_func($this->modifyQueryCallback, $query);
+        }
+
+        return $query->get()->map(
+            fn(Model $record) => Marker::fromRecord(
+                $record,
+                $this->latColumn,
+                $this->lngColumn,
+                $this->jsonColumn,
+                $this->titleColumn,
+                $this->descriptionColumn,
+                $this->popupFieldsColumns,
+                $this->color,
+                $this->iconUrl,
+                $this->mapRecordCallback
+            )
+        )->all();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Configurações do Cluster
+    |--------------------------------------------------------------------------
+    */
+
+    public function maxClusterRadius(int $radius): static
+    {
+        return $this->option('maxClusterRadius', $radius);
+    }
+
+    public function showCoverageOnHover(bool $show = true): static
+    {
+        return $this->option('showCoverageOnHover', $show);
+    }
+
+    public function zoomToBoundsOnClick(bool $zoom = true): static
+    {
+        return $this->option('zoomToBoundsOnClick', $zoom);
+    }
+
+    public function spiderfyOnMaxZoom(bool $spiderfy = true): static
+    {
+        return $this->option('spiderfyOnMaxZoom', $spiderfy);
+    }
+
+    public function removeOutsideVisibleBounds(bool $remove = true): static
+    {
+        return $this->option('removeOutsideVisibleBounds', $remove);
+    }
+
+    public function disableClusteringAtZoom(int $zoomLevel): static
+    {
+        return $this->option('disableClusteringAtZoom', $zoomLevel);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Model Binding Methods
+    |--------------------------------------------------------------------------
+    */
+
+    public function model(string $model): static
+    {
+        $this->model = $model;
+        return $this;
+    }
+
+    public function modifyQueryUsing(?Closure $callback): static
+    {
+        $this->modifyQueryCallback = $callback;
+        return $this;
+    }
+
+    public function mapRecordUsing(?Closure $callback): static
+    {
+        $this->mapRecordCallback = $callback;
+        return $this;
+    }
+
+    public function iconUrl(string $url): static
+    {
+        $this->iconUrl = $url;
         return $this;
     }
 
@@ -193,18 +246,8 @@ class MarkerCluster extends Layer
     |--------------------------------------------------------------------------
     */
 
-    public function getMarkers(): array
-    {
-        return $this->markers;
-    }
-
-    public function getOptions(): array
-    {
-        return $this->options;
-    }
-
     public function count(): int
     {
-        return count($this->markers);
+        return count($this->getMarkers());
     }
 }

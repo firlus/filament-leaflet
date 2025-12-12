@@ -5,6 +5,7 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Widgets;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Shape;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -29,7 +30,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     protected static bool $isLazy = false;
 
-    protected string $view = 'filament-leaflet::widgets.base-map';
+    protected string $view = 'filament-leaflet::widgets.map-widget';
 
     protected static ?string $heading = null;
 
@@ -155,7 +156,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     /**
      * Retorna a coleção de Shapes a serem exibidos.
-     * @return Layer[]
+     * @return Shape[]
      */
     public function getShapes(): array
     {

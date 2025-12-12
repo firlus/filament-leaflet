@@ -2,21 +2,31 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
-
-class Rectangle extends Layer
+class Rectangle extends Shape
 {
-    protected array $bounds; // [[lat1, lng1], [lat2, lng2]]
-    protected array $options = [];
+    protected array $bounds;
 
-    final public function __construct(array $bounds)
+    /**
+     * @param array $corner1 Coordenada [lat, lng] do primeiro canto
+     * @param array $corner2 Coordenada [lat, lng] do canto oposto
+     */
+    final public function __construct(array $corner1, array $corner2)
     {
-        $this->bounds = $bounds;
+        parent::__construct();
+        $this->bounds = [$corner1, $corner2];
     }
 
-    public static function make(array $bounds): static
+    public static function make(array $corner1, array $corner2): static
     {
-        return new static($bounds);
+        return new static($corner1, $corner2);
+    }
+    
+    /**
+     * Construtor alternativo usando coordenadas soltas.
+     */
+    public static function makeFromCoordinates(float $lat1, float $lng1, float $lat2, float $lng2): static
+    {
+        return new static([$lat1, $lng1], [$lat2, $lng2]);
     }
 
     public function getType(): string
@@ -28,38 +38,14 @@ class Rectangle extends Layer
     {
         return [
             'bounds' => $this->bounds,
-            'options' => $this->options,
+            'options' => $this->getShapeOptions(),
         ];
     }
 
     public function isValid(): bool
     {
-        return count($this->bounds) === 2 &&
-            count($this->bounds[0]) === 2 &&
-            count($this->bounds[1]) === 2;
-    }
-
-    public function options(array $options): static
-    {
-        $this->options = array_merge($this->options, $options);
-        return $this;
-    }
-
-    public function color(string $color): static
-    {
-        $this->options['color'] = $color;
-        return $this;
-    }
-
-    public function fillColor(string $color): static
-    {
-        $this->options['fillColor'] = $color;
-        return $this;
-    }
-
-    public function weight(int $weight): static
-    {
-        $this->options['weight'] = $weight;
-        return $this;
+        return count($this->bounds) === 2 
+            && count($this->bounds[0]) === 2 
+            && count($this->bounds[1]) === 2;
     }
 }

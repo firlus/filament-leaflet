@@ -20,4 +20,19 @@ enum Color: string implements HasLabel
     {
         return __($this->name);
     }
+
+    public function hex(): string
+    {
+        return match ($this) {
+            self::Blue => '#2A81CB',
+            self::Red => '#CB2B3E',
+            self::Green => '#2AAD27',
+            self::Orange => '#CB8427',
+            self::Yellow => '#CAC428',
+            self::Violet => '#9C2BCB',
+            self::Grey => '#7B7B7B',
+            self::Black => '#3D3D3D',
+            self::Gold => '#FFD326',
+        };
+    }
 }
