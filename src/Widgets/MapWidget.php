@@ -37,12 +37,16 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     protected static array $mapCenter = [-14.235, -51.9253]; // Centro do Brasil
     protected static int $defaultZoom = 4;
     protected static int $mapHeight = 504;
-    protected static bool $hasAttributionControl = false;
+    protected static bool $hasAttributionControl = true;
+    protected static bool $hasFullscreenControl = false;
+    protected static bool $hasSearchControl = false;
+    protected static bool $hasScaleControl = false;
+    protected static bool $hasZoomControl = false;
     protected static int $maxZoom = 18;
     protected static int $minZoom = 2;
 
-    /** @var TileLayer|string[] */
-    protected static array $tileLayersUrl = [TileLayer::OpenStreetMap];
+    /** @var TileLayer|string|array */
+    protected static TileLayer|string|array $tileLayersUrl = TileLayer::OpenStreetMap;
 
     // Configurações do GeoJSON Density
     protected static ?string $geoJsonUrl = null;
@@ -105,9 +109,41 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
+     * Define se o controle de fullscreen deve ser exibido.
+     */
+    public static function hasFullscreenControl(): bool
+    {
+        return static::$hasFullscreenControl;
+    }
+
+    /**
+     * Define se o controle de search deve ser exibido.
+     */
+    public static function hasSearchControl(): bool
+    {
+        return static::$hasSearchControl;
+    }
+
+    /**
+     * Define se o controle de zoom deve ser exibido.
+     */
+    public static function hasScaleControl(): bool
+    {
+        return static::$hasScaleControl;
+    }
+
+    /**
+     * Define se o controle de zoom deve ser exibido.
+     */
+    public static function hasZoomControl(): bool
+    {
+        return static::$hasZoomControl;
+    }
+
+    /**
      * Retorna as URLs das camadas de tiles
      */
-    public static function getTileLayersUrl(): array
+    public static function getTileLayersUrl(): TileLayer|string|array
     {
         return static::$tileLayersUrl;
     }
@@ -132,8 +168,22 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             'scrollWheelZoom' => true,
             'doubleClickZoom' => true,
             'dragging' => true,
-            'zoomControl' => true,
+            'zoomControl' => false,
+            'attributionControl' => false,
+        ];
+    }
+
+    /**
+     * Retorna controles definidos para o mapa.
+     */
+    public static function getMapControls(): array
+    {
+        return [
             'attributionControl' => static::hasAttributionControl(),
+            'scaleControl'       => static::hasScaleControl(),
+            'zoomControl'        => static::hasZoomControl(),
+            'fullscreenControl'  => static::hasFullscreenControl(),
+            'searchControl'      => static::hasSearchControl(),
         ];
     }
 
@@ -418,7 +468,13 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      */
     private static function preparedTileLayersUrl(): array
     {
-        return collect(static::getTileLayersUrl())
+        $tileLayersUrl = static::getTileLayersUrl();
+
+        if (!is_array($tileLayersUrl)) {
+            $tileLayersUrl = [$tileLayersUrl];
+        }
+
+        return collect($tileLayersUrl)
             ->map(function ($layer, $key) {
                 $label = match (true) {
                     is_string($key) => $key,
@@ -449,6 +505,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             'layers'        => $this->preparedLayers(),
             'zoomConfig'    => static::getZoomOptions(),
             'mapConfig'     => static::getMapOptions(),
+            'mapControls'   => static::getMapControls(),
             'geoJsonUrl'    => $this->getGeoJsonUrl(),
         ];
     }

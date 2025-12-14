@@ -91,13 +91,52 @@ class MyMapWidget extends MapWidget
     // Zoom configuration
     protected static int $maxZoom = 18;
     protected static int $minZoom = 2;
-    
-    // Show attribution control
-    protected static bool $hasAttributionControl = true;
+}
+```
+
+### Map Controls
+
+You can enable or disable UI controls individually using the widget flags. Use the provided toggles to show controls:
+
+- `hasAttributionControl`: show/hide the attribution control
+- `hasScaleControl`: show/hide the scale control
+- `hasZoomControl`: show/hide the zoom control
+- `hasFullscreenControl`: show/hide the fullscreen control
+- `hasSearchControl`: show/hide the search control
+Examples
+
+- Enable controls from the widget class:
+
+```php
+class MyMapWidget extends MapWidget
+{
+    protected static bool $hasAttributionControl = false;
+    protected static bool $hasScaleControl = true;
+    protected static bool $hasZoomControl = true;
+    protected static bool $hasFullscreenControl = true;
+    protected static bool $hasSearchControl = true;
+}
+```
+
+- Conditionally toggle controls per runtime using `getMapControls()` override. This is useful when you want control visibility to depend on user permissions or widget state:
+
+```php
+public static function getMapControls(): array
+{
+    $controls = parent::getMapControls();
+
+    // Example: hide fullscreen for non-admins
+    if (!auth()?->user()?->is_admin) {
+        $controls['fullscreenControl'] = false;
+    }
+
+    return $controls;
 }
 ```
 
 ### Tile Layers
+
+Tile layers can be provided as a single `TileLayer` enum, a plain URL string, or an array of layers. When using an associative array you may provide custom labels for the layer selector. If a `TileLayer` enum is used the widget will also include the provider attribution automatically.
 
 Choose from multiple tile layer providers or add your own:
 
@@ -768,6 +807,12 @@ class LocationMapWidget extends MapWidget
 }
 ```
 
+Notes:
+
+- You can set `protected static ?string $markerResource = YourResource::class;` to reuse an existing Filament Resource form instead of the widget's default form. The widget will call the resource's form builder when building the create modal.
+- If the widget form schema doesn't include your latitude/longitude fields, the widget will automatically add them as `Hidden` fields so the create flow still receives coordinates from map clicks.
+- If you store coordinates as a JSON column, set `protected static ?string $jsonCoordinatesColumnName = 'coordinates';` and the widget will convert the latitude/longitude into the configured JSON column before creating the record.
+
 Now when users click the map, a form modal opens to create a new location!
 
 ### Using a Resource Form
@@ -976,7 +1021,7 @@ public static function getMapOptions(): array
         'scrollWheelZoom' => true,
         'doubleClickZoom' => true,
         'dragging' => true,
-        'zoomControl' => true,
+        'zoomControl' => false,
         'attributionControl' => false,
         'touchZoom' => true,
         'boxZoom' => true,
@@ -984,6 +1029,10 @@ public static function getMapOptions(): array
     ];
 }
 ```
+
+Notes:
+
+- Please, keep the `zoomControl` and `attributionControl` set as false. It is managed in the [Map Controls](#map-controls) section.
 
 ### Complete Example
 

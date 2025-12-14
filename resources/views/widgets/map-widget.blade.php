@@ -28,6 +28,7 @@
             z-index: 0;
             border-radius: 5px;
             overflow: hidden;
+            color: black;
         }
 
         .info-{{ $widgetId }} {
@@ -102,6 +103,7 @@
                 init() {
                     this.createMap();
                     this.addTileLayers();
+                    this.setupMapControls();
 
                     if (Object.keys(this.config.geoJsonData)?.length) {
                         this.setupInfoControl();
@@ -444,7 +446,7 @@
                 },
 
                 setupLayerControl() {
-                    const hasBaseLayers = Object.keys(this.baseLayers).length > 0;
+                    const hasBaseLayers = Object.keys(this.baseLayers).length > 1;
                     const hasOverlays = Object.keys(this.layerGroups).length > 0;
 
                     if (!hasBaseLayers && !hasOverlays) {
@@ -459,6 +461,72 @@
                         this.baseLayers,
                         this.layerGroups
                     ).addTo(this.map);
+                },
+
+                setupMapControls() {
+                    if (this.config.mapControls.attributionControl) {
+                        this.setupAttributionControl();
+                    }
+
+                    if (this.config.mapControls.scaleControl) {
+                        this.setupScaleControl();
+                    }
+
+                    if (this.config.mapControls.zoomControl) {
+                        this.setupZoomControl();
+                    }
+
+                    if (this.config.mapControls.fullscreenControl) {
+                        this.setupFullscreenControl();
+                    }
+
+                    if (this.config.mapControls.searchControl) {
+                        this.setupSearchControl();
+                    }
+                },
+
+                setupAttributionControl() {
+                    const attribution = new L.control.attribution();
+                    this.map.addControl(attribution);
+                },
+
+                setupScaleControl() {
+                    const scale = new L.control.scale();
+                    this.map.addControl(scale);
+                },
+
+                setupZoomControl() {
+                    const zoom = new L.control.zoom();
+                    this.map.addControl(zoom);
+                },
+
+                setupSearchControl() {
+                    const provider = new GeoSearch.OpenStreetMapProvider();
+
+                    const search = new GeoSearch.GeoSearchControl({
+                        provider: provider,
+                        notFoundMessage: '{{ __('Sorry, that address could not be found.') }}',
+                        searchLabel: '{{ __('Enter address') }}',
+
+                        marker: {
+                            icon: this.createIcon({
+                                color: 'blue'
+                            }),
+                            draggable: false,
+                        },
+                    });
+
+                    this.map.addControl(search);
+                },
+
+                setupFullscreenControl() {
+                    const fullscreen = new L.Control.FullScreen({
+                        title: '{{ __('Full Screen') }}',
+                        titleCancel: '{{ __('Exit Full Screen') }}',
+                        forceSeparateButton: true,
+                    });
+
+                    this.map.addControl(fullscreen);
                 },
 
                 setupEventHandlers() {
