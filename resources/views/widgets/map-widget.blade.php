@@ -21,6 +21,7 @@
     <x-filament-actions::modals />
 
     {{-- Estilos CSS --}}
+    @push("scripts")
     <style>
         #{{ $mapId }} {
             height: {{ $this->getMapHeight() }}px;
@@ -729,6 +730,7 @@
             window.MapWidget{{ $widgetId }} = MapWidget{{ $widgetId }};
         });
     </script>
+    @endpush
 
     {!! $this->getAdditionalScripts() !!}
 </x-filament-widgets::widget>
